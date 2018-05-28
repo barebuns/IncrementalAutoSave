@@ -27,44 +27,57 @@ particular instance of part/assy/WP.
   (sd-display-alert "Beginning Baseline Autosave" :icon :info :auto-close-time 5)										;Popup toast warning user what's up
   (sd-with-current-working-directory *AutoSaveBaseLocation*																;Remember CWD, change dir, run these things, revert to CWD
     (save_sd :OVERWRITE :CWD_CHANGED :SELECT :all_at_top) 																;Save all items using .sd format 
-    (sd-sys-background-job (format nil "xcopy ..\\~A ..\\~ABaseCopy /I" (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)))) ;Assumes 10 character timestamp
-    (sd-display-alert (format nil "Autosaved to ~A" *AutoSaveBaseLocation*) :icon :info :auto-close-time 5)				;Popup toast showing location saved to
-  )
-)
- 
+	(when (sd-module-active-p "ANNOTATION")                                                                             ;Check if Anno is active
+      (anno-autosave) )																									;Autosave the drawing in Annotator
+	(sd-sys-background-job (format nil "xcopy ..\\~A ..\\~ABaseCopy /I" (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)))) ;Assumes 10 character timestamp
+    (sd-display-alert (format nil "Autosaved to ~A" *AutoSaveBaseLocation*) :icon :info :auto-close-time 5) ) )			;Popup toast showing location saved to
+
 (defun AutoSaveIncremental ()
   (oli:sd-display-alert "Beginning Incremental Autosave" :icon :info :auto-close-time 1)								;Popup toast warning user what's up
   (sd-with-current-working-directory *AutoSaveBaseLocation*																;Remember CWD, change dir, run these things, revert to CWD
     (save_sd_modified :OVERWRITE :all_at_top :TOP_LEVEL_INSTANCE_FILES :YES :DIRECTORY *AutoSaveBaseLocation* complete) ;Save all modified items - super fast 
-    (sd-display-alert (format nil "Autosaved to ~A" *AutoSaveBaseLocation*) :icon :info :auto-close-time 5)				;Popup toast showing location saved to
-    (sd-sys-background-job (format nil "xcopy ..\\~A ..\\~A_~A /I" (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) *AutoSaveIncrement*)) ;Assumes 10 character timestamp
-    (sd-display-alert (format nil "Copied incremental to ~A_~A" *AutoSaveBaseLocation* *AutoSaveIncrement*) :icon :info :auto-close-time 5)				;Popup toast showing location saved to
-  )	
+	(when (sd-module-active-p "ANNOTATION")																				;Check if Anno is active
+      (anno-autosave)  )																								;Autosave the drawing in Annotator
+	(sd-display-alert (format nil "Autosaved to ~A" *AutoSaveBaseLocation*) :icon :info :auto-close-time 1.5)				;Popup toast showing location saved to
+    (sd-sys-background-job (format nil "xcopy ..\\~A ..\\~A_~A /I /y" (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) (subseq *AutoSaveBaseLocation* (- (length *AutoSaveBaseLocation*) 10)) *AutoSaveIncrement*)) ;Assumes 10 character timestamp
+    (sd-display-alert (format nil "Copied incremental to ~A_~A" *AutoSaveBaseLocation* *AutoSaveIncrement*) :icon :info :auto-close-time 1.5)				;Popup toast showing location saved to
+    )	
   (if (= *AutoSaveIncrement* *AutoSaveNumberOfIncrements*)																;Loop to capture fallback increments
     (setf *AutoSaveIncrement* 1)																						;Reset to 1
-	(setf *AutoSaveIncrement* (+ *AutoSaveIncrement* 1))																;Increment by 1
-  )	
-)
+	(setf *AutoSaveIncrement* (+ *AutoSaveIncrement* 1)) ) )
 
 (defun OpenAutoSaveDir ()
 ;  (sd-with-current-working-directory *AutoSaveBaseLocation*																;Remember CWD, change dir, run these things, revert to CWD
 ;    (sd-sys-background-job "start ..")
 ;  )
-  (sd-sys-background-job (format nil "start ~AAutosave" (sd-inq-temp-dir)))
-)
+  (sd-sys-background-job (format nil "start ~AAutosave" (sd-inq-temp-dir))) )
 
 (defun QuickClickAutoSave ()																							;If there hasn't been a baseline AutoSave this session, performs AutoSaveBaseline. If AutoSaveBaseLocation != nil do an AutoSaveIncremental
   (sd-display-alert "Checking for AutoSaveLocation" :icon :info :auto-close-time 5)										;Popup toast warning user what's up
   (if (eq *AutoSaveBaseLocation* nil) 
     (AutoSaveBaseline)
-	(AutoSaveIncremental)
-  )
-)
+	(AutoSaveIncremental)  ) )
 
 (ADD_TOOLBOX_BUTTON :TOOLBOX "TOOLBOX" :LABEL "AutoSave Baseline" :ACTION "(valve::AutoSaveBaseline)")
 (ADD_TOOLBOX_BUTTON :TOOLBOX "TOOLBOX" :LABEL "AutoSave Incremental" :ACTION "(valve::AutoSaveIncremental)")
 (ADD_TOOLBOX_BUTTON :TOOLBOX "TOOLBOX" :LABEL "Open AutoSave Dir" :ACTION "(valve::OpenAutoSaveDir)")
 (ADD_TOOLBOX_BUTTON :TOOLBOX "TOOLBOX" :LABEL "Quick Click AutoSave" :ACTION "(valve::QuickClickAutoSave)")
 
+(sd-define-available-command
+ "All" "Valve Commands" "Quick Autosave"
+ :groupTitle   "Valve Commands"
+ :commandTitle "Quick AutoSave"
+ :action       "(valve::QuickClickAutoSave)"
+ :image        (format nil "~A/VersionNeutral/Autosave/GM/IncrementalAutoSave/QuickAutosave01.bmp" (oli::sd-sys-getenv "SDSITECUSTOMIZEDIR"))   )
+ 
 (sd-display-alert "Done loading Autosave" :icon :info :auto-close-time 5)
 
+#|
+(in-package :valve)
+(use-package :oli)
+
+(defun GSaveDrawing ()
+	(when (sd-module-active-p "ANNOTATION")
+      (am_store_drawing :filename "gtmp21.mi" :overwrite :check_up_to_date 1 :yes)    )
+)
+|#
